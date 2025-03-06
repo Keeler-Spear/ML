@@ -1,3 +1,5 @@
+import java.util.function.Function;
+
 /**
  * A static class that provides methods manipulating data.
  * <p>
@@ -153,5 +155,29 @@ public class Data {
             }
         }
     }
+
+    //Standardizes x data to have a mean of zero and standard deviation of 0.
+    public static Matrix standardizeData(Matrix x) {
+        Matrix sX = new Matrix(Stat.standardize(x.getCol(1)));
+
+        for (int i = 2; i <= x.getCols(); i++) {
+            sX.addColRight(Stat.standardize(x.getCol(i)));
+        }
+
+        return sX;
+    }
+
+    //Works for one peram.
+    public static Matrix deStandardizeWeights(Matrix w, Matrix x, Function[] fncs) {
+        double stdX = Stat.stDev(x);
+        Matrix nW = new Matrix(w.getRows(), w.getCols());
+
+        for (int i = 0; i < w.getRows(); i++) {
+            nW.setValue(i + 1, 1, w.getValue(i + 1, 1 ) / (double) fncs[i].apply(stdX));
+        }
+
+        return nW;
+    }
+
 
 }

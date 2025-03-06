@@ -1,3 +1,5 @@
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -99,42 +101,6 @@ public class Metrics {
 
     /**
      * Creates a confusion matrix based on the data sets provided.
-     * <p>
-     *     DOES NOT WORK FOR MULTI-CLASSIFICATION!
-     * </p>
-     *
-     * @param exact The true data set.
-     * @param approx The approximation of the true data set.
-     * @return The confusion matrix based on the data sets provided.
-     * @throws IllegalArgumentException If the data sets provided are not the same length.
-     */
-    public static Matrix confusionMatrix(int[] exact, int[] approx) {
-        if (exact.length != approx.length) {
-            throw new IllegalArgumentException("The data sets must be the same length!");
-        }
-
-        double[][] CM = new double[2][2];
-
-        for (int i = 0; i < exact.length; i++) {
-            if (exact[i] == 1 && approx[i] == 1) { //True positive
-                CM[0][0] += 1;
-            }
-            else if (exact[i] == 0 && approx[i] == 1) { //False positive
-                CM[0][1] += 1;
-            }
-            else if (exact[i] == 1 && approx[i] == 0) { //False negative
-                CM[1][0] += 1;
-            }
-            else if (exact[i] == 0 && approx[i] == 0) { //True negative
-                CM[1][1] += 1;
-            }
-        }
-
-        return new Matrix(CM);
-    }
-
-    /**
-     * Creates a confusion matrix based on the data sets provided.
      *
      * @param exact The true data set.
      * @param approx The approximation of the true data set.
@@ -151,7 +117,7 @@ public class Metrics {
             throw new IllegalArgumentException("The data sets must be the same length!");
         }
 
-        int numClass = Regression.countClasses(exact);
+        int numClass = countClasses(exact);
 
         double[][] CM = new double[numClass][numClass];
 
@@ -192,6 +158,22 @@ public class Metrics {
         return confusionMatrix(exact, approx);
     }
 
+    //Counts the number of classes.
+    private static int countClasses(Matrix y) {
+        int n = 0;
+        y = LinearAlgebra.roundMatrix(y);
+        Set<Integer> classes = new HashSet<>();
+
+        for (int i = 1; i <= y.getRows(); i++) {
+            if (!classes.contains((int) y.getValue(i, 1))) {
+                classes.add((int) y.getValue(i, 1));
+                n++;
+            }
+        }
+
+        return n;
+    }
+
     //The probability that an object is correctly classified.
     public static double accuracy(Matrix CM) {
         return (CM.getValue(1, 1) + CM.getValue(2, 2)) / (CM.getValue(1, 1) + CM.getValue(1, 2) + CM.getValue(2, 1) + CM.getValue(2, 2));
@@ -222,7 +204,6 @@ public class Metrics {
         System.out.println("Accuracy: " + accuracy(CM));
         System.out.println("Precision: " + precision(CM));
         System.out.println("Recall: " + recall(CM));
-
     }
 
     //ToDo: ROC curve
