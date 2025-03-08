@@ -10,6 +10,6 @@ A library for machine learning operations in Java.
 
 # Dependencies
 
--Chart.java
--Mathematics.java
+-Chart.java\
+-Mathematics.java\
 -Utility.java
