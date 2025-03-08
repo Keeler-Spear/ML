@@ -175,7 +175,7 @@ public class Metrics {
     }
 
     //The probability that an object is correctly classified.
-    //ToDo: Should be diag sum divided by all values
+    //ToDo: Should be diag sum divided by all values.
     public static double accuracy(Matrix CM) {
         return (CM.getValue(1, 1) + CM.getValue(2, 2)) / (CM.getValue(1, 1) + CM.getValue(1, 2) + CM.getValue(2, 1) + CM.getValue(2, 2));
     }
