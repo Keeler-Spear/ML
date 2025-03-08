@@ -175,6 +175,7 @@ public class Metrics {
     }
 
     //The probability that an object is correctly classified.
+    //ToDo: Should be diag sum divided by all values
     public static double accuracy(Matrix CM) {
         return (CM.getValue(1, 1) + CM.getValue(2, 2)) / (CM.getValue(1, 1) + CM.getValue(1, 2) + CM.getValue(2, 1) + CM.getValue(2, 2));
     }
@@ -189,7 +190,7 @@ public class Metrics {
         return CM.getValue(2, 2) / (CM.getValue(2, 1) + CM.getValue(2, 2));
     }
 
-    //
+    //Harmonic mean of precision and recall
     public static double fMeasure(Matrix CM) {
         double r = recall(CM);
         double p = precision(CM);
@@ -199,11 +200,69 @@ public class Metrics {
     //https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html
     public static void printClassificationReport (Matrix CM) {
         System.out.println("Classification Report\n" + "---------------------");
+        //Printing the confusion matrix
         System.out.println("Confusion Matrix:");
-        System.out.println(CM);
-        System.out.println("Accuracy: " + accuracy(CM));
+        for (int i = 0; i < CM.getRows(); i++) {
+            System.out.print("Actual " + i + " - " + LinearAlgebra.transpose(LinearAlgebra.vectorFromRow(CM, i + 1)) + "\n");
+        }
+        System.out.print("Predicted:     ");
+        for (int i = 0; i < CM.getCols(); i++) {
+            System.out.print(i + "      ");
+        }
+
+        //General Metrics
+        System.out.println("\n\nAccuracy: " + accuracy(CM));
         System.out.println("Precision: " + precision(CM));
         System.out.println("Recall: " + recall(CM));
+
+        double p;
+        double r;
+        double f;
+        String pString;
+        String rString;
+        String fString;
+        String sString;
+        double[] ps = new double[CM.getRows()];
+        double[] rs = new double[CM.getCols()];
+        double[] fs = new double[CM.getCols()];
+
+        //Class specific metrics
+        System.out.println("\n\t\t\tPrecision\tRecall\tF1-score\tSupport");
+        for (int i = 0; i < CM.getRows(); i++) {
+            p = CM.getValue(i + 1, i + 1) / LinearAlgebra.colSum(CM, i + 1);
+            ps[i] = p;
+            r = CM.getValue(i + 1, i + 1) / LinearAlgebra.rowSum(CM, i + 1);
+            rs[i] = r;
+            f =  (2 * r * p) / (r + p);
+            fs[i] = f;
+            pString = String.format("%.2f", p);
+            rString = String.format("%.2f", r);
+            fString = String.format("%.2f", f);
+            sString = String.format("%.0f", LinearAlgebra.rowSum(CM, i + 1));
+
+            System.out.print("\t\t" + i + "     " + pString + "\t\t " + rString + "\t  " + fString + "\t\t   " + sString);
+            System.out.println();
+
+        }
+
+        sString = String.format("%.0f", LinearAlgebra.matrixSum(CM));
+        String acc = String.format("%.2f", accuracy(CM));
+        System.out.println(" Accuracy\t\t\t\t\t\t  " + acc + "\t\t   " + sString);
+        pString = String.format("%.2f", Stat.mean(ps));
+        rString = String.format("%.2f", Stat.mean(rs));
+        fString = String.format("%.2f", Stat.mean(fs));
+        System.out.println("Macro Avg     " + pString + "\t\t " + rString + "\t  " + fString + "\t\t   " + sString);
+
+        double[] support = new double[CM.getRows()];
+        for (int i = 0; i < CM.getRows(); i++) {
+            support[i] = LinearAlgebra.rowSum(CM, i + 1);
+        }
+        pString = String.format("%.2f", Stat.weightedMean(ps, support));
+        rString = String.format("%.2f", Stat.weightedMean(rs, support));
+        fString = String.format("%.2f", Stat.weightedMean(fs, support));
+        System.out.println("Micro Avg     " + pString + "\t\t " + rString + "\t  " + fString + "\t\t   " + sString);
+
+
     }
 
     //ToDo: ROC curve
