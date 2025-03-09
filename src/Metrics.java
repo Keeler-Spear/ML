@@ -14,6 +14,8 @@ import java.util.function.Function;
  */
 public class Metrics {
 
+    private static final Matrix THRESHOLDS = LinearAlgebra.linSpace(0.0, 1.0, 0.01);
+
     /**
      * Computes the mean squared error between two data sets.
      *
@@ -136,26 +138,26 @@ public class Metrics {
      * Creates a confusion matrix based from two data sets, where the approximate data set will be created from a
      * function created by the weights provided.
      *
-     * @param x The x values of the exact data.
-     * @param exact The true data set.
+     * @param xTest The x values of the exact data.
+     * @param yTest The true data set.
      * @param w The weights of the function from which an approximation will be created.
      * @param fnc The functions used to model the data.
      * @return The confusion matrix based on the data sets provided.
      * @throws IllegalArgumentException If the data sets provided have more than one column.
      * @throws IllegalArgumentException If the data sets provided are not the same length.
      */
-    public static Matrix confusionMatrix(Matrix x, Matrix exact, Matrix w, Function[] fnc) {
-        if (exact.getCols() != 1 ) {
+    public static Matrix confusionMatrix(Matrix xTest, Matrix yTest, Matrix w, Function[] fnc) {
+        if (yTest.getCols() != 1 ) {
             throw new IllegalArgumentException("The exact data set must have exactly one column!");
         }
 
-        if (exact.getRows() != x.getRows()) {
+        if (yTest.getRows() != xTest.getRows()) {
             throw new IllegalArgumentException("The data sets must be the same length!");
         }
 
-        Matrix approx = Regression.buildLogisticFunction(x, w, fnc);
+        Matrix approx = Regression.buildLogisticFunction(xTest, w, fnc);
 
-        return confusionMatrix(exact, approx);
+        return confusionMatrix(yTest, approx);
     }
 
     //Counts the number of classes.
@@ -177,7 +179,7 @@ public class Metrics {
     //The probability that an object is correctly classified.
     //ToDo: Should be diag sum divided by all values.
     public static double accuracy(Matrix CM) {
-        return (CM.getValue(1, 1) + CM.getValue(2, 2)) / (CM.getValue(1, 1) + CM.getValue(1, 2) + CM.getValue(2, 1) + CM.getValue(2, 2));
+        return LinearAlgebra.diagSum(CM) / LinearAlgebra.matrixSum(CM);
     }
 
     //The probability that a predicted positive is actually a positive.
@@ -197,8 +199,14 @@ public class Metrics {
         return (2 * r * p) / (r + p);
     }
 
+    //ToDo: Generalize for multi-classification
     //https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html
-    public static void printClassificationReport (Matrix CM) {
+    public static void printClassificationReport (Matrix xTest, Matrix yTest, Matrix w, Function[] fnc) {
+        Matrix CM = confusionMatrix(xTest, yTest, w, fnc);
+
+        if (CM.getRows() != 2 && CM.getCols() != 2) {
+            throw new IllegalArgumentException("The confusion matrix must be 2x2!");
+        }
         System.out.println("Classification Report\n" + "---------------------");
         //Printing the confusion matrix
         System.out.println("Confusion Matrix:");
@@ -262,9 +270,75 @@ public class Metrics {
         fString = String.format("%.2f", Stat.weightedMean(fs, support));
         System.out.println("Micro Avg     " + pString + "\t\t " + rString + "\t  " + fString + "\t\t   " + sString);
 
-
+        Matrix roc = getROCCurve(xTest, yTest, w, fnc);
+        double auc = getAUC(LinearAlgebra.vectorFromColumn(roc, 2), LinearAlgebra.vectorFromColumn(roc, 1));
+        String curve = "ROC Curve (AUC = " + String.format("%.2f", auc) + ")";
+        PyChart.fnc(LinearAlgebra.vectorFromColumn(roc, 1), LinearAlgebra.vectorFromColumn(roc, 2), curve, "False Positive Rate", "True Positive Rate", "Receiver Operating Characteristic");
     }
 
-    //ToDo: ROC curve
+    /**
+     * Plots the ROC Curve which compares (True Positive Rate) to the FPR (False Positive Rate).
+     * <P>
+     *     This method was made by ChatGPT.
+     * </P>
+     *
+     * @param xTest The x values of the exact data.
+     * @param yTest The true data set.
+     * @param w The weights of the function from which an approximation will be created.
+     * @param fncs The functions used to model the data.
+     */
+    public static Matrix getROCCurve(Matrix xTest, Matrix yTest, Matrix w, Function[] fncs) {
+        int numThresholds = THRESHOLDS.getRows();
+        Matrix roc = new Matrix(numThresholds, 2);
+        Matrix approx = Regression.buildLogisticFunction(xTest, w, fncs);
+
+        for (int t = 1; t <= numThresholds; t++) {
+            double threshold = THRESHOLDS.getValue(t, 1);
+
+            // Build confusion matrix
+            double[][] CM = new double[2][2];
+            for (int i = 1; i <= yTest.getRows(); i++) {
+                int actual = (int) yTest.getValue(i, 1);
+                int predicted = round(approx.getValue(i, 1), threshold);
+                CM[actual][predicted] += 1;
+            }
+
+            double tpr = CM[1][1] / (CM[1][1] + CM[1][0]);
+            double fpr = CM[0][1] / (CM[0][1] + CM[0][0]);
+
+            roc.setValue(t, 1, fpr);
+            roc.setValue(t, 2, tpr);
+        }
+
+        return roc;
+    }
+
+    public static double[] quickModelEval (Matrix xTest, Matrix yTest, Matrix w, Function[] fnc) {
+        double[] metrics = new double[2];
+        Matrix roc = getROCCurve(xTest, yTest, w, fnc);
+        metrics[0] = accuracy(confusionMatrix(xTest, yTest, w, fnc));
+        metrics[1] = getAUC(LinearAlgebra.vectorFromColumn(roc, 2), LinearAlgebra.vectorFromColumn(roc, 1));
+        System.out.println("Accuracy: " + String.format("%.4f", metrics[0]) + " | AUC: " + String.format("%.4f", metrics[1]));
+        return metrics;
+    }
+
+    //This method was made by ChatGPT
+    private static int round(double value, double threshold) {
+        return value >= threshold ? 1 : 0;
+    }
+
+    //This method was made by ChatGPT. While I could use my own numerical integration method, those require a constant step size
+    private static double getAUC(Matrix TPR, Matrix FPR) {
+        double auc = 0.0;
+        int n = TPR.getRows();
+
+        for (int i = 1; i < n; i++) {
+            double width = FPR.getValue(i, 1) - FPR.getValue(i + 1, 1);
+            double height = (TPR.getValue(i, 1) + TPR.getValue(i + 1, 1)) / 2.0;
+            auc += width * height;
+        }
+
+        return auc;
+    }
 
 }
