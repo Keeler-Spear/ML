@@ -42,8 +42,11 @@ public abstract class Model {
         }
 
         trained = true;
-        trainProtected(x, y);
+        trainProtected(x, y, generateW0(x.getCols() * (basisFunctions.length - 1) + 1));
     }
+
+    //n is the length of the vector
+    protected abstract Matrix generateW0(int n);
 
     //Predict a single sample
     public double predict(double[] sample) {
@@ -110,7 +113,7 @@ public abstract class Model {
 
     protected abstract Matrix predictProtected(Matrix x);
 
-    protected abstract void trainProtected(Matrix x, Matrix y);
+    protected abstract void trainProtected(Matrix x, Matrix y, Matrix w0);
 
     public void printClassificationReport(Matrix x, Matrix y) {
         if (!trained) {

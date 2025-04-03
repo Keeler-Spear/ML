@@ -9,6 +9,11 @@ public class LogRegClassifier extends Model{
     }
 
     @Override
+    protected Matrix generateW0(int n) {
+        return LinearAlgebra.zeroMatrix(n, 1);
+    }
+
+    @Override
     protected Matrix predictProtected(Matrix x) {
         Matrix y = buildFunction(x);
 
@@ -17,8 +22,7 @@ public class LogRegClassifier extends Model{
     }
 
     @Override
-    protected void trainProtected(Matrix x, Matrix y) {
-        Matrix w0 = LinearAlgebra.zeroMatrix(x.getCols() * (basisFunctions.length - 1) + 1, 1);
+    protected void trainProtected(Matrix x, Matrix y, Matrix w0) {
         weights = Regression.logisticReg(x, y, w0, learningRate, basisFunctions, false);
     }
 
