@@ -22,8 +22,8 @@ public class LogRegClassifier extends Model{
     }
 
     @Override
-    protected void trainProtected(Matrix x, Matrix y, Matrix w0) {
-        weights = Regression.logisticReg(x, y, w0, learningRate, basisFunctions, false);
+    protected void trainProtected(Matrix X, Matrix y, Matrix w0) {
+        weights = Regression.logisticReg(X, y, w0, learningRate, basisFunctions, false);
     }
 
 }
