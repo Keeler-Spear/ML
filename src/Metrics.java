@@ -273,7 +273,77 @@ public class Metrics {
         Matrix roc = getROCCurve(xTest, yTest, w, fnc);
         double auc = getAUC(LinearAlgebra.vectorFromColumn(roc, 2), LinearAlgebra.vectorFromColumn(roc, 1));
         String curve = "ROC Curve (AUC = " + String.format("%.2f", auc) + ")";
-        PyChart.fnc(LinearAlgebra.vectorFromColumn(roc, 1), LinearAlgebra.vectorFromColumn(roc, 2), curve, "False Positive Rate", "True Positive Rate", "Receiver Operating Characteristic");
+        PyChart.plot(LinearAlgebra.vectorFromColumn(roc, 1), LinearAlgebra.vectorFromColumn(roc, 2), curve, "False Positive Rate", "True Positive Rate", "Receiver Operating Characteristic");
+    }
+
+    public static void printClassificationReport (Matrix yExact, Matrix yApprox) {
+        Matrix CM = confusionMatrix(yExact, yApprox);
+
+        if (CM.getRows() != 2 && CM.getCols() != 2) {
+            throw new IllegalArgumentException("The confusion matrix must be 2x2!");
+        }
+        System.out.println("Classification Report\n" + "---------------------");
+        //Printing the confusion matrix
+        System.out.println("Confusion Matrix:");
+        for (int i = 0; i < CM.getRows(); i++) {
+            System.out.print("Actual " + i + " - " + LinearAlgebra.transpose(LinearAlgebra.vectorFromRow(CM, i + 1)) + "\n");
+        }
+        System.out.print("Predicted:     ");
+        for (int i = 0; i < CM.getCols(); i++) {
+            System.out.print(i + "      ");
+        }
+
+        //General Metrics
+        System.out.println("\n\nAccuracy: " + accuracy(CM));
+        System.out.println("Precision: " + precision(CM));
+        System.out.println("Recall: " + recall(CM));
+
+        double p;
+        double r;
+        double f;
+        String pString;
+        String rString;
+        String fString;
+        String sString;
+        double[] ps = new double[CM.getRows()];
+        double[] rs = new double[CM.getCols()];
+        double[] fs = new double[CM.getCols()];
+
+        //Class specific metrics
+        System.out.println("\n\t\t\tPrecision\tRecall\tF1-score\tSupport");
+        for (int i = 0; i < CM.getRows(); i++) {
+            p = CM.getValue(i + 1, i + 1) / LinearAlgebra.colSum(CM, i + 1);
+            ps[i] = p;
+            r = CM.getValue(i + 1, i + 1) / LinearAlgebra.rowSum(CM, i + 1);
+            rs[i] = r;
+            f =  (2 * r * p) / (r + p);
+            fs[i] = f;
+            pString = String.format("%.2f", p);
+            rString = String.format("%.2f", r);
+            fString = String.format("%.2f", f);
+            sString = String.format("%.0f", LinearAlgebra.rowSum(CM, i + 1));
+
+            System.out.print("\t\t" + i + "     " + pString + "\t\t " + rString + "\t  " + fString + "\t\t   " + sString);
+            System.out.println();
+
+        }
+
+        sString = String.format("%.0f", LinearAlgebra.matrixSum(CM));
+        String acc = String.format("%.2f", accuracy(CM));
+        System.out.println(" Accuracy\t\t\t\t\t\t  " + acc + "\t\t   " + sString);
+        pString = String.format("%.2f", Stat.mean(ps));
+        rString = String.format("%.2f", Stat.mean(rs));
+        fString = String.format("%.2f", Stat.mean(fs));
+        System.out.println("Macro Avg     " + pString + "\t\t " + rString + "\t  " + fString + "\t\t   " + sString);
+
+        double[] support = new double[CM.getRows()];
+        for (int i = 0; i < CM.getRows(); i++) {
+            support[i] = LinearAlgebra.rowSum(CM, i + 1);
+        }
+        pString = String.format("%.2f", Stat.weightedMean(ps, support));
+        rString = String.format("%.2f", Stat.weightedMean(rs, support));
+        fString = String.format("%.2f", Stat.weightedMean(fs, support));
+        System.out.println("Micro Avg     " + pString + "\t\t " + rString + "\t  " + fString + "\t\t   " + sString);
     }
 
     /**
