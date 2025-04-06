@@ -8,8 +8,6 @@ import java.util.function.Function;
  * @since 1.0
  */
 public abstract class Model {
-    protected Function<Double, Double> sigmoid = (z) -> 1 / (1 + Math.exp(-z));
-
     protected double learningRate = 0.001;
     protected Function<Double, Double>[] basisFunctions;
     protected Matrix weights;
@@ -20,8 +18,12 @@ public abstract class Model {
      *
      * @param learningRate The learning rate the model will use when training.
      * @param basisFunctions The set of basis functions used to fit the model.
+     * @throws IllegalArgumentException If the learning rate is less than or equal to zero.
      */
     public Model(double learningRate, Function<Double, Double>[] basisFunctions) {
+        if (learningRate <= 0) {
+            throw new IllegalArgumentException("Learning rate must be greater than 0!");
+        }
         this.learningRate = learningRate;
         this.basisFunctions = basisFunctions;
     }

@@ -18,7 +18,7 @@ public class LogRegClassifier extends Model{
         Matrix y = buildFunction(x);
 
         //Only works for binary classification
-        return LinearAlgebra.applyFunction(y, sigmoid);
+        return LinearAlgebra.applyFunction(y, ActivationFunctions.sigmoid);
     }
 
     @Override
